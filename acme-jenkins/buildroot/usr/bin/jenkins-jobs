@@ -1,0 +1,181 @@
+#!/bin/bash
+
+DEFAULT_JENKINS_URL="http://localhost:8080"
+CURL_EXEC=$(which curl)
+if [ ! -x $CURL_EXEC ]
+then
+   echo "cannot find curl" 1>&2
+   exit 1
+fi
+
+usage() {
+   echo "jenkins-jobs load [--load-options]" 1>&2
+   echo "   jenkins-jobs load [--url http://localhost:8080 ] [--overwrite] --file <file> --name <name> --username <username> --password <password>" 1>&2
+   echo "       where <file> is a valid jenkins job config.xml" 1>&2
+   echo "jenkins-jobs delete [--delete-options]" 1>&2
+   echo "   jenkins-jobs delete [--url http://localhost:8080 ] --name <name> --username <username> --password <password>" 1>&2
+   exit 1
+}
+
+parseCommon() {
+   while [ $# -gt 0 ]
+   do
+      case $1 in
+         "--name")
+            if [ $# -eq 0 ]
+            then
+               usage
+            fi
+            shift
+            name=$1
+            ;;
+         "--username")
+            if [ $# -eq 0 ]
+            then
+               usage
+            fi
+            shift
+            username=$1
+            ;;
+         "--password")
+            if [ $# -eq 0 ]
+            then
+               usage
+            fi
+            shift
+            password=$1
+            ;;
+         "--url")
+            if [ $# -eq 0 ]
+            then
+               usage
+            fi
+            shift
+            url=$1
+            ;;
+      esac
+
+      shift
+   done
+
+   if [ -z $url ]
+   then
+      url=$DEFAULT_JENKINS_URL
+   fi
+
+}
+
+parseLoad() {
+
+   parseCommon $*
+
+    if [ -z $name ]
+    then
+       usage
+    fi
+    if [ -z $username ]
+    then
+       usage
+    fi
+    if [ -z $password ]
+    then
+       usage
+    fi
+
+
+   OVERWRITE=false
+   while [ $# -gt 0 ]
+   do
+      case $1 in
+         "--file")
+            if [ $# -eq 0 ]
+            then
+               usage
+            fi
+            shift
+            file=$1
+            ;;
+         "--overwrite")
+            OVERWRITE=true
+            ;;
+       esac
+       shift
+   done
+
+   if [ -z "$file" ]
+   then
+      usage
+   fi
+}
+
+parseDelete() {
+
+    if [ -z $name ]
+    then
+       usage
+    fi
+    if [ -z $username ]
+    then
+       usage
+    fi
+    if [ -z $password ]
+    then
+       usage
+    fi
+
+    parseCommon $*   
+
+}
+
+performDelete() {
+   parseDelete $*
+
+
+   $CURL_EXEC -S -f --user ${username}:${password} -H 'Content-Type: text/xml' -s --data /dev/null "${url}/job/${name}/doDelete"
+
+}
+
+performLoad() {
+   parseLoad $*
+
+   if [ "$OVERWRITE" = true ]
+   then
+      $CURL_EXEC  -f --user ${username}:${password} -H 'Content-Type: text/xml' -s --data /dev/null "${url}/job/${name}/doDelete" > /dev/null 2>&1
+   fi
+   $CURL_EXEC -S -f --user ${username}:${password} -H "Content-Type: text/xml" -s --data "@${file}" "${url}/createItem?name=${name}"
+
+}
+
+performList() {
+   parseCommon $*
+   #$CURL_EXEC -s -f "${url}/api/xml?tree=jobs\[name\]" | sed -e 's,<name>,^,g' -e 's,</name>,^,g'  |tr '^' '\n' |grep -v '^<'
+   $CURL_EXEC -s -f "${url}/api"
+}
+
+
+subCmd=$1
+case $subCmd in
+   "list")
+      shift
+      performList $*
+      ;;
+   "load")
+      shift
+      performLoad $*
+      ;;
+   "delete")
+      shift
+      performDelete $*
+      ;;
+   *)
+      usage
+      ;;
+esac
+
+if [ $? -ne 0 ]
+then
+   echo "$0 $subCmd $* failed" 1>&2
+   exit 1
+fi
+
+exit 0
