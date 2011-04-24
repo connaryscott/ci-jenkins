@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<hudson>
+  <version>1.405</version>
+  <numExecutors>2</numExecutors>
+  <mode>NORMAL</mode>
+  <useSecurity>true</useSecurity>
+  <authorizationStrategy class="hudson.security.ProjectMatrixAuthorizationStrategy">
+    <permission>hudson.model.Computer.Configure:acme</permission>
+    <permission>hudson.model.Computer.Delete:acme</permission>
+    <permission>hudson.model.Hudson.Administer:acme</permission>
+    <permission>hudson.model.Hudson.Read:acme</permission>
+    <permission>hudson.model.Hudson.Read:anonymous</permission>
+    <permission>hudson.model.Item.Build:acme</permission>
+    <permission>hudson.model.Item.Configure:acme</permission>
+    <permission>hudson.model.Item.Create:acme</permission>
+    <permission>hudson.model.Item.Delete:acme</permission>
+    <permission>hudson.model.Item.Read:acme</permission>
+    <permission>hudson.model.Item.Read:anonymous</permission>
+    <permission>hudson.model.Item.Workspace:acme</permission>
+    <permission>hudson.model.Run.Delete:acme</permission>
+    <permission>hudson.model.Run.Update:acme</permission>
+    <permission>hudson.model.View.Configure:acme</permission>
+    <permission>hudson.model.View.Create:acme</permission>
+    <permission>hudson.model.View.Delete:acme</permission>
+    <permission>hudson.scm.SCM.Tag:acme</permission>
+  </authorizationStrategy>
+  <securityRealm class="hudson.security.HudsonPrivateSecurityRealm">
+    <disableSignup>true</disableSignup>
+  </securityRealm>
+  <markupFormatter class="hudson.markup.RawHtmlMarkupFormatter"/>
+  <jdks/>
+  <viewsTabBar class="hudson.views.DefaultViewsTabBar"/>
+  <myViewsTabBar class="hudson.views.DefaultMyViewsTabBar"/>
+  <clouds/>
+  <slaves/>
+  <quietPeriod>5</quietPeriod>
+  <scmCheckoutRetryCount>0</scmCheckoutRetryCount>
+  <views>
+    <hudson.model.AllView>
+      <owner class="hudson" reference="../../.."/>
+      <name>All</name>
+      <filterExecutors>false</filterExecutors>
+      <filterQueue>false</filterQueue>
+    </hudson.model.AllView>
+  </views>
+  <primaryView>All</primaryView>
+  <slaveAgentPort>0</slaveAgentPort>
+  <label></label>
+  <nodeProperties/>
+  <globalNodeProperties/>
+  <disabledAdministrativeMonitors/>
+</hudson>

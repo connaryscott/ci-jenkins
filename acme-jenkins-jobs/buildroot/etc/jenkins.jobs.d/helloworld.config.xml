@@ -1,0 +1,21 @@
+<project>
+   <actions/>
+   <description/>
+   <keepDependencies>false</keepDependencies>
+   <properties/>
+   <scm class='hudson.scm.NullSCM'/>
+   <assignedNode>centos-54-64-vm4.local</assignedNode>
+   <canRoam>false</canRoam>
+   <disabled>false</disabled>
+   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+   <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+   <triggers class='vector'/>
+   <concurrentBuild>false</concurrentBuild>
+   <builders>
+      <hudson.tasks.Shell>
+         <command>echo helloworld job executes and sleeps for 30 seconds to mock job run</command>
+      </hudson.tasks.Shell>
+   </builders>
+   <publishers/>
+   <buildWrappers/>
+</project>
