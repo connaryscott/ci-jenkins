@@ -15,6 +15,9 @@
       <hudson.tasks.Shell>
          <command>echo helloworld job executes and sleeps for 30 seconds to mock job run</command>
       </hudson.tasks.Shell>
+      <hudson.tasks.Shell>
+         <command>sleep 30</command>
+      </hudson.tasks.Shell>
    </builders>
    <publishers/>
    <buildWrappers/>
