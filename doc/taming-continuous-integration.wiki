@@ -1,0 +1,397 @@
+<span style="font-weight: bold;font-size:130%;" ><blockquote></blockquote><blockquote></blockquote><blockquote></blockquote><ul><li>Introduction</li></ul></span>
+I have always felt that Continuous Integration (CI) is an environment that should be treated like any other. It should be completely automated from provisioning the platform all the way to each CI job. At many client sites, I have seen such CI environments maintained in modes that are essentially ad-hoc. Users, authenticated or perhaps even anonymous, who create operational jobs via the UI and expect such jobs to behave consistently.  Except for the process of  familiarizing oneself with a product, I tend to avoid  web interfaces for repetition as they become cumbersome, error prone, and lead to inconsistent results.   Essentially, the web interface should be treated as a development tool so that we can create reference installations in order to bootstrap ourselves into automating that platform for the true operational environments.
+
+I have broken down steps to implementing a fully automated Jenkins solution. In addition to this blog, I will also describe, in a subsequent post, how to integrate Jenkins into a higher level release management workflow integrating Apache/Rundeck/JSON. This will document  further collaboration where the CI environment is deployed and maintained from a hands-off process where interaction with it is exposed to a higher level coordination tool, namely Rundeck.  In addition to the hands-off CI process, as this blog will document,  we will also see how we can expose CI for a hands-off Release Process.
+
+<span style="font-weight: bold;"><span style="font-size:130%;">Assumptions</span>
+</span><ul><li><span>This exercise was conducted on a CentOS 5.5 64-bit O/S, however any recent RedHat or Centos platform should suffice.</span></li><li><span>yum and rpm sudo access as root</span></li><li><span>Ability to create a repo configuration file in /etc/yum.repos.d directory o
+</span></li><li><span>git installed</span></li><li><span>Internet access is needed in order to download jenkins and supporting centos packaging along with configurations accessible in <a href="http://pastebin.com/">g</a>ithub.</span></li><li><span>All packaging will reference a fictitious <span style="font-style: italic;">acme</span> corporation</span></li></ul><span style="font-weight: bold;"><span style="font-size:130%;">Preparation</span>
+
+</span><ul><li><span>Install Apache webserver stack with mod_python 2.6 support (</span><b>NOTE</b><span>:  not needed for immediate exercise but will come in handy with respect to JSON support in subsequent post)</span></li></ul><span></span><span></span><span></span><blockquote><span>[chuck@</span> <span>centos-55-64-vm6 ~]$  sudo yum install python26-mod_python</span><span>
+
+Loaded plugins: fastestmirror
+Loading mirror speeds from cached hostfile
+* addons: mirror.nic.uoregon.edu
+* base: mirror.stanford.edu
+* epel: linux.mirrors.es.net
+* extras: mirror.stanford.edu
+* updates: mirror.stanford.edu
+Setting up Install Process
+Resolving Dependencies
+--&gt; Running transaction check
+---&gt; Package python26-mod_python.x86_64 0:3.3.1-13.el5 set to be updated
+--&gt; Processing Dependency: libpython2.6.so.1.0()(64bit) for package: python26-mod_python
+--&gt; Running transaction check
+---&gt; Package python26-libs.x86_64 0:2.6.5-6.el5 set to be updated
+--&gt; Processing Dependency: python26 = 2.6.5-6.el5 for package: python26-libs
+--&gt; Running transaction check
+---&gt; Package python26.x86_64 0:2.6.5-6.el5 set to be updated
+--&gt; Processing Dependency: libffi.so.5()(64bit) for package: python26
+--&gt; Running transaction check
+---&gt; Package libffi.x86_64 0:3.0.5-1.el5 set to be updated
+--&gt; Finished Dependency Resolution
+
+Dependencies Resolved
+
+====================================================================================================================================================================================================
+Package                                                 Arch                                       Version                                          Repository                                Size
+====================================================================================================================================================================================================
+Installing:
+python26-mod_python                                     x86_64                                     3.3.1-13.el5                                     epel                                     332 k
+Installing for dependencies:
+libffi                                                  x86_64                                     3.0.5-1.el5                                      epel                                      24 k
+python26                                                x86_64                                     2.6.5-6.el5                                      epel                                     6.5 M
+python26-libs                                           x86_64                                     2.6.5-6.el5                                      epel                                     692 k
+
+Transaction Summary
+====================================================================================================================================================================================================
+Install       4 Package(s)
+Upgrade       0 Package(s)
+
+Total download size: 7.5 M
+Is this ok [y/N]: y
+Downloading Packages:
+(1/4): libffi-3.0.5-1.el5.x86_64.rpm                                                                                                                                         |  24 kB     00:00  
+(2/4): python26-mod_python-3.3.1-13.el5.x86_64.rpm                                                                                                                           | 332 kB     00:00  
+(3/4): python26-libs-2.6.5-6.el5.x86_64.rpm                                                                                                                                  | 692 kB     00:00  
+(4/4): python26-2.6.5-6.el5.x86_64.rpm                                                                                                                                       | 6.5 MB     00:07  
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Total                                                                                                                                                               898 kB/s | 7.5 MB     00:08  
+Running rpm_check_debug
+Running Transaction Test
+Finished Transaction Test
+Transaction Test Succeeded
+Running Transaction
+Installing     : libffi                                                                                                                                                                       1/4
+Installing     : python26-libs                                                                                                                                                                2/4
+Installing     : python26-mod_python                                                                                                                                                          3/4
+Installing     : python26                                                                                                                                                                     4/4
+
+Installed:
+python26-mod_python.x86_64 0:3.3.1-13.el5                                                                                                                                                      
+
+Dependency Installed:
+libffi.x86_64 0:3.0.5-1.el5                                   python26.x86_64 0:2.6.5-6.el5                                   python26-libs.x86_64 0:2.6.5-6.el5                               
+
+Complete!
+</span></blockquote><ul><li>Verify and/or install git  (<b>NOTE</b>: needed for RPM package builds only)</li></ul><blockquote></blockquote><blockquote><blockquote>[chuck@centos-55-64-vm6 ci-jenkins]$ rpm -q git</blockquote><blockquote>git-1.5.5.6-4.el5</blockquote></blockquote><ul><li>Verify and/or install rpm-build package (<b>NOTE</b>:  needed for RPM package builds only)</li></ul><blockquote>[chuck@centos-55-64-vm6 ~]$ rpm -q rpm-build
+
+rpm-build-4.4.2.3-18.el5</blockquote><ul><li><span>Create the jenkins 3rd party yum repo configuration</span></li></ul><span><blockquote>[chuck@centos-55-64-vm6 dto]$ sudo curl -s -o /etc/yum.repos.d/jenkins.repo \
+http://pkg.jenkins-ci.org/redhat/jenkins.repo</blockquote><blockquote></blockquote><blockquote></blockquote><span><span></span></span></span><blockquote><span><span><span>[chuck@centos-55-64-vm6 dto]$ cat /etc/yum.repos.d/jenkins.repo</span></span></span><div><span><span><span>[jenkins]</span></span></span></div><div><span><span><span>name=Jenkins</span></span></span></div><div><span><span><span>baseurl=http://pkg.jenkins-ci.org/redhat/</span></span></span></div><div><span><span><span>gpgcheck=1</span></span></span></div></blockquote><div><ul><li><span>Import the Jenkins Package Key</span> </li></ul><span></span><span></span><blockquote><span>[chuck@centos-55-64-vm6 dto]$ sudo rpm --import \</span>
+<span>http://pkg.jenkins-ci.org/redhat/jenkins-ci.org.key</span></blockquote><blockquote><span></span></blockquote><span style="font-weight: bold;"><span style="font-size:130%;"><div  style="font-weight: bold;font-family:arial;"><ul><li style="font-weight: normal;"><span style="font-size:85%;">Create a workspace directory (<span style="font-weight: bold;">NOTE</span>:  this location is arbitrary)</span> </li></ul><span class="Apple-style-span" style="font-weight: normal;font-size:85%;" ></span></div><blockquote  style="font-weight: bold;font-family:arial;"><div><span class="Apple-style-span" style="font-weight: normal;font-size:85%;" >[chuck@centos-55-64-vm6 ]$ mkdir -p $HOME/workspace/dto</span></div><div><span class="Apple-style-span" style="font-weight: normal;font-size:85%;" ></span><span class="Apple-style-span" style="font-weight: normal;font-size:85%;" >[chuck@centos-55-64-vm6 ]$ cd $HOME/workspace/dto</span></div></blockquote><div  style="font-family:arial;"><ul><li><span style="font-weight: normal;font-size:85%;" >Checkout the package source</span></li></ul><span class="Apple-style-span" style="font-weight: normal;font-size:85%;" ><blockquote></blockquote></span></div><blockquote  style="font-family:arial;"><div><span class="Apple-style-span" style="font-weight: normal;font-size:85%;" ><span class="Apple-style-span">[chuck@centos-55-64-vm6 dto]$ git clone git://github.com/connaryscott/ci-jenkins.git</span></span></div><div><span class="Apple-style-span" style="font-weight: normal;font-size:85%;" ><div><span class="Apple-style-span"><span class="Apple-style-span">
+</span></span></div><div><span class="Apple-style-span"><span class="Apple-style-span">Initialized empty Git repository in /home/chuck/workpace/dto/ci-jenkins/.git/</span></span></div><div><span class="Apple-style-span"><span class="Apple-style-span">remote: Counting objects: 36, done.</span></span></div><div><span class="Apple-style-span"><span class="Apple-style-span">remote: Compressing objects: 100% (22/22), done.</span></span></div><div><span class="Apple-style-span"><span class="Apple-style-span">remote: Total 36 (delta 3), reremote: used 0 (delta 0)</span></span></div><div><span class="Apple-style-span"><span class="Apple-style-span">Receiving objects: 100% (36/36), 5.41 KiB, done.</span></span></div><div><span class="Apple-style-span"><span class="Apple-style-span">Resolving deltas: 100% (3/3), done.
+
+</span></span></div><div><span class="Apple-style-span"><span class="Apple-style-span">chuck@centos-55-64-vm6 dto]$ cd ci-jenkins
+</span></span><span style="font-weight: bold;"><span style="font-size:130%;"><span class="Apple-style-span" style="font-weight: normal;font-size:85%;" ><div><span class="Apple-style-span"><span class="Apple-style-span">chuck@centos-55-64-vm6 </span></span><span style="font-weight: bold;"><span style="font-size:130%;"><span class="Apple-style-span" style="font-weight: normal;font-size:85%;" ><span style="font-weight: bold;"><span style="font-size:130%;"><span class="Apple-style-span" style="font-weight: normal;font-size:85%;" ><span class="Apple-style-span"><span class="Apple-style-span">ci-jenkins</span></span></span></span></span></span></span></span><span class="Apple-style-span"><span class="Apple-style-span">]$
+</span></span></div></span></span></span>
+</div></span></div></blockquote><div><span class="Apple-style-span" style="font-weight: normal;"><div></div></span></div><div><span class="Apple-style-span" style="font-weight: normal;">
+</span></div><div><span style="font-weight: bold;"><span style="font-size:130%;"><div><span style="font-size:medium;"><span style="font-weight: normal;"></span></span></div></span></span></div>Create RPM Package Sources</span>
+
+</span><span>We create distinct platform, configuration, and job packages</span> to honor separation of concerns.
+
+<span style="font-size:100%;"><span style="font-weight: bold;">Acme Jenkins Platform Package</span></span>
+
+This package is simple in nature, spec file has a `requires' statement for the jenkins product and a jenkins-job script to wrap a shell driven <span style="font-style: italic;">rest</span> based client api for loading jobs.  Makefile, which is similar to other packages about to be seen, is a simple rpmbuild wrapper.
+</div><div>
+</div><div><ul><li>Spec and Makefile</li></ul></div><div><blockquote>[chuck@centos-55-64-vm6 ci-jenkins]$ cat acme-jenkins/acme-jenkins.spec</blockquote><blockquote>name: acme-jenkins
+version: 1.0
+release: 0
+summary: acme-jenkins platform package
+group: acme/releaseMgmt
+license: acme inc.
+
+requires: jenkins
+
+%description
+jenkins base platform with value added utilities
+
+%files
+%attr(755, root, root) /usr/bin/jenkins-jobs</blockquote><blockquote>[chuck@centos-55-64-vm6 ci-jenkins]$ cat acme-jenkins/Makefile</blockquote><blockquote>
+<pre>.PHONY: acme-jenkins
+
+acme-jenkins: clean
+mkdir -p dist/RPMS/noarch
+rm -rf build-target
+cp -r buildroot build-target
+rpmbuild -bb --target=noarch --define "_topdir ${PWD}/dist" --buildroot="${PWD}/build-target" acme-jenkins.spec
+
+clean:
+rm -rf build-target
+rm -rf dist
+</pre></blockquote><ul><li>Build the acme-jenkins package</li></ul><blockquote>[chuck@centos-55-64-vm6 ci-jenkins]$ cd acme-jenkins</blockquote><blockquote>[chuck@centos-55-64-vm6 acme-jenkins]$ make</blockquote><blockquote>rm -rf build-target
+rm -rf dist
+mkdir -p dist/RPMS/noarch
+rm -rf build-target
+cp -r buildroot build-target
+rpmbuild -bb --target=noarch --define "_topdir /home/chuck/workpace/dto/acme-jenkins/dist" --buildroot="/home/chuck/workpace/dto/acme-jenkins/build-target" acme-jenkins.spec
+Building target platforms: noarch
+Building for target noarch
+Processing files: acme-jenkins-1.0-0
+Requires(rpmlib): rpmlib(CompressedFileNames) &lt;= 3.0.4-1 rpmlib(PayloadFilesHavePrefix) &lt;= 4.0-1
+Requires: jenkins
+Checking for unpackaged file(s): /usr/lib/rpm/check-files /home/chuck/workpace/dto/acme-jenkins/build-target
+Wrote: /home/chuck/workpace/dto/acme-jenkins/dist/RPMS/noarch/acme-jenkins-1.0-0.noarch.rpm</blockquote><span style="font-size:100%;"><span style="font-weight: bold;">Acme Jenkins Platform Configuration Package</span></span>
+
+This package will enforce the following
+
+<ul><li>enabling Jenkins's own user database</li><li>defining the "acme" user</li><li>Project-based Matrix Authorization Strategy for:</li><ul><li>anonymous read-only access </li><li>acme user read/write access</li></ul></ul>The acme user is considered a role based user account which is for locking down the platform with an exclusive privileged user.  More interesting configuration may reflect an ldap authentication scheme as opposed to the Jenkins user database.  Additionally, this package depends on the above acme-platform package.
+</div><div>
+</div><div><div><ul><li>Spec and Makefile</li></ul></div><blockquote>[chuck@centos-55-64-vm6 acme-jenkins]$ cd ..</blockquote><blockquote>[chuck@centos-55-64-vm6 ci-jenkins]$ cat acme-jenkins-config/acme-jenkins-config.spec</blockquote><blockquote>name: acme-jenkins-config
+version: 1.0
+release: 0
+summary: acme-jenkins platform configuration package
+group: acme/releaseMgmt
+license: acme inc.
+
+requires: acme-jenkins
+
+%description
+jenkins jobs configurtion platform package
+
+%files
+%attr(664, jenkins, jenkins) %config /var/lib/jenkins/config.xml
+%dir %attr(755, jenkins, jenkins) /var/lib/jenkins/users
+%dir %attr(755, jenkins, jenkins) /var/lib/jenkins/users/acme
+%attr(664, jenkins, jenkins) %config /var/lib/jenkins/users/acme/config.xml
+
+%post
+
+%changelog
+* Sun Mar 27 2011 Chuck Scott <chuck@acme.com> 1.0-0</chuck@acme.com></blockquote><blockquote>[chuck@centos-55-64-vm6 ci-jenkins]$ cat acme-jenkins-config/Makefile</blockquote><blockquote>
+<pre>.PHONY: acme-jenkins-config
+
+acme-jenkins-config: clean
+mkdir -p dist/RPMS/noarch
+rm -rf build-target
+cp -r buildroot build-target
+rpmbuild -bb --target=noarch --define "_topdir ${PWD}/dist" --buildroot="${PWD}/build-target" acme-jenkins-config.spec
+
+clean:
+rm -rf build-target
+rm -rf dist
+</pre>
+</blockquote><ul><li>Build the acme-jenkins-config package</li></ul><blockquote>[chuck@centos-55-64-vm6 ci-jenkins]$ cd acme-jenkins-config</blockquote><blockquote>[chuck@centos-55-64-vm6 acme-jenkins-config]$ make
+
+rm -rf build-target
+rm -rf dist
+mkdir -p dist/RPMS/noarch
+rm -rf build-target
+cp -r buildroot build-target
+rpmbuild -bb --target=noarch --define "_topdir /home/chuck/workpace/blogdto/acme-jenkins-config/dist" --buildroot="/home/chuck/workpace/blogdto/acme-jenkins-config/build-target" acme-jenkins-config.spec
+Building target platforms: noarch
+Building for target noarch
+Processing files: acme-jenkins-config-1.0-0
+Provides: config(acme-jenkins-config) = 1.0-0
+Requires(interp): /bin/sh
+Requires(rpmlib): rpmlib(CompressedFileNames) &lt;= 3.0.4-1 rpmlib(PayloadFilesHavePrefix) &lt;= 4.0-1
+Requires(post): /bin/sh
+Requires: acme-jenkins config(acme-jenkins-config) = 1.0-0
+Checking for unpackaged file(s): /usr/lib/rpm/check-files /home/chuck/workpace/blogdto/acme-jenkins-config/build-target
+Wrote: /home/chuck/workpace/blogdto/acme-jenkins-config/dist/RPMS/noarch/acme-jenkins-config-1.0-0.noarch.rpm
+</blockquote>
+<span style="font-size:100%;"><span style="font-weight: bold;">Acme Jenkins Jobs  Package</span></span>
+<span>
+</span>A little more sophistication is built into the spec file.   Since we are loading jobs via a rest base utility, we must ensure jenkins is running, so it makes an idempotent start of the server to ensure it is running.  In addition to this, we ensure that jenkins is able to respond to its rest based services prior to loading any jobs.  We load a trivial helloworld job that allows us to demonstrate successful job load.
+
+<div><ul><li>Spec, Makefile, and helloworld CI job
+</li></ul><blockquote>[chuck@centos-55-64-vm6 acme-jenkins]$ cd ..
+[chuck@centos-55-64-vm6 ci-jenkins]$ cat acme-jenkins-jobs/acme-jenkins-jobs.spec
+
+[chuck@centos-55-64-vm6 ci-jenkins]$ cat acme-jenkins-jobs/acme-jenkins-jobs.spec
+
+<pre>name: acme-jenkins-jobs
+version: 1.0
+release: 0
+summary: acme-jenkins platform package
+group: acme/releaseMgmt
+license: acme inc.
+
+requires: acme-jenkins-config
+
+%description
+jenkins jobs package
+
+%files
+%dir %attr(750, jenkins, jenkins) /etc/jenkins.jobs.d
+%attr(640, jenkins, jenkins) /etc/jenkins.jobs.d/helloworld.config.xml
+
+%post
+
+/etc/rc.d/init.d/jenkins start
+sleep 10
+tries=0
+while [ 1 ]
+do
+echo waiting for jenkins to start
+sleep 5
+/usr/bin/jenkins-jobs list &gt;/dev/null 2&gt;&amp;1
+if [ $? -eq 0 ]
+then
+   break
+fi
+let tries=tries+1
+if [ $tries -eq 30 ]
+then
+   echo "jenkins startup failed" 1&gt;&amp;2
+   exit 1
+fi
+done
+/usr/bin/jenkins-jobs load --overwrite --file /etc/jenkins.jobs.d/helloworld.config.xml --name helloworld --username acme --password acmepass
+
+%changelog
+* Sun Mar 27 2011 Chuck Scott <chuck@acme.com> 1.0-0
+- initial version
+</chuck@acme.com></pre>
+
+[chuck@centos-55-64-vm6 ci-jenkins]$ cat acme-jenkins-jobs/Makefile
+.PHONY: acme-jenkins-jobs
+
+<pre>acme-jenkins-jobs: clean
+mkdir -p dist/RPMS/noarch
+rm -rf build-target
+cp -r buildroot build-target
+rpmbuild -bb --target=noarch --define "_topdir ${PWD}/dist" --buildroot="${PWD}/build-target" acme-jenkins-jobs.spec
+
+clean:
+rm -rf build-target
+rm -rf dist
+</pre>
+
+[chuck@centos-55-64-vm6 ci-jenkins]$ cat acme-jenkins-jobs/buildroot/etc/jenkins.jobs.d/helloworld.config.xml
+<pre>&lt;project&gt;
+&lt;actions/&gt;
+&lt;description/&gt;
+&lt;keepDependencies&gt;false&lt;/keepDependencies&gt;
+&lt;properties/&gt;
+&lt;scm class='hudson.scm.NullSCM'/&gt;
+&lt;assignedNode&gt;centos-54-64-vm4.local&lt;/assignedNode&gt;
+&lt;canRoam&gt;false&lt;/canRoam&gt;
+&lt;disabled&gt;false&lt;/disabled&gt;
+&lt;blockBuildWhenDownstreamBuilding&gt;false&lt;/blockBuildWhenDownstreamBuilding&gt;
+&lt;blockBuildWhenUpstreamBuilding&gt;false&lt;/blockBuildWhenUpstreamBuilding&gt;
+&lt;triggers class='vector'/&gt;
+&lt;concurrentBuild&gt;false&lt;/concurrentBuild&gt;
+&lt;builders&gt;
+   &lt;hudson.tasks.Shell&gt;
+      &lt;command&gt;echo helloworld job executes and sleeps for 30 seconds to mock job run&lt;/command&gt;
+   &lt;/hudson.tasks.Shell&gt;
+   &lt;hudson.tasks.Shell&gt;
+      &lt;command&gt;sleep 30&lt;/command&gt;
+   &lt;/hudson.tasks.Shell&gt;
+&lt;/builders&gt;
+&lt;publishers/&gt;
+&lt;buildWrappers/&gt;
+&lt;/project&gt;
+</pre></blockquote><ul><li>Build the acme-jenkins-jobs package</li></ul><blockquote>[chuck@centos-55-64-vm6 ci-jenkins]$ cd acme-jenkins-jobs
+[chuck@centos-55-64-vm6 acme-jenkins-jobs]$ make
+
+rm -rf build-target
+rm -rf dist
+mkdir -p dist/RPMS/noarch
+rm -rf build-target
+cp -r buildroot build-target
+rpmbuild -bb --target=noarch --define "_topdir /home/chuck/workpace/dto/ci-jenkins/acme-jenkins-jobs/dist" --buildroot="/home/chuck/workpace/dto/ci-jenkins/acme-jenkins-jobs/build-target" acme-jenkins-jobs.spec
+Building target platforms: noarch
+Building for target noarch
+Processing files: acme-jenkins-jobs-1.0-0
+Requires(interp): /bin/sh
+Requires(rpmlib): rpmlib(CompressedFileNames) &lt;= 3.0.4-1 rpmlib(PayloadFilesHavePrefix) &lt;= 4.0-1
+Requires(post): /bin/sh
+Requires: acme-jenkins-config
+Checking for unpackaged file(s): /usr/lib/rpm/check-files /home/chuck/workpace/dto/ci-jenkins/acme-jenkins-jobs/build-target
+Wrote: /home/chuck/workpace/dto/ci-jenkins/acme-jenkins-jobs/dist/RPMS/noarch/acme-jenkins-jobs-1.0-0.noarch.rpm
+[chuck@centos-55-64-vm6 acme-jenkins-jobs]$
+</blockquote><span style="font-size:100%;"><span style="font-weight: bold;">
+Reviewing produced packages</span></span>
+
+<blockquote>[chuck@centos-55-64-vm6 acme-jenkins-jobs]$ cd ..
+[chuck@centos-55-64-vm6 ci-jenkins]$ find . -name \*.rpm -print
+
+./acme-jenkins/dist/RPMS/noarch/acme-jenkins-1.0-0.noarch.rpm
+./acme-jenkins-jobs/dist/RPMS/noarch/acme-jenkins-jobs-1.0-0.noarch.rpm
+./acme-jenkins-config/dist/RPMS/noarch/acme-jenkins-config-1.0-0.noarch.rpm</blockquote><span style="font-weight: bold;">Testing RPM installations with yum localinstall</span>
+
+<blockquote>[chuck@centos-55-64-vm6 ci-jenkins]$ sudo yum localinstall \
+--nogpgcheck $(find . -name \*.rpm -print)
+
+Loaded plugins: fastestmirror
+Setting up Local Package Process
+Examining ./acme-jenkins/dist/RPMS/noarch/acme-jenkins-1.0-0.noarch.rpm: acme-jenkins-1.0-0.noarch
+Marking ./acme-jenkins/dist/RPMS/noarch/acme-jenkins-1.0-0.noarch.rpm to be installed
+Loading mirror speeds from cached hostfile
+* addons: mirror.nic.uoregon.edu
+* base: mirror.stanford.edu
+* epel: linux.mirrors.es.net
+* extras: mirror.stanford.edu
+* updates: mirror.stanford.edu
+Examining ./acme-jenkins-jobs/dist/RPMS/noarch/acme-jenkins-jobs-1.0-0.noarch.rpm: acme-jenkins-jobs-1.0-0.noarch
+Marking ./acme-jenkins-jobs/dist/RPMS/noarch/acme-jenkins-jobs-1.0-0.noarch.rpm to be installed
+Examining ./acme-jenkins-config/dist/RPMS/noarch/acme-jenkins-config-1.0-0.noarch.rpm: acme-jenkins-config-1.0-0.noarch
+Marking ./acme-jenkins-config/dist/RPMS/noarch/acme-jenkins-config-1.0-0.noarch.rpm to be installed
+Resolving Dependencies
+--&gt; Running transaction check
+---&gt; Package acme-jenkins.noarch 0:1.0-0 set to be updated
+--&gt; Processing Dependency: jenkins for package: acme-jenkins
+---&gt; Package acme-jenkins-config.noarch 0:1.0-0 set to be updated
+---&gt; Package acme-jenkins-jobs.noarch 0:1.0-0 set to be updated
+--&gt; Running transaction check
+---&gt; Package jenkins.noarch 0:1.408-1.1 set to be updated
+--&gt; Finished Dependency Resolution
+
+Dependencies Resolved
+
+====================================================================================================================================================================================================
+Package                                          Arch                                Version                                  Repository                                                      Size
+====================================================================================================================================================================================================
+Installing:
+acme-jenkins                                     noarch                              1.0-0                                    /acme-jenkins-1.0-0.noarch                                     3.1 k
+acme-jenkins-config                              noarch                              1.0-0                                    /acme-jenkins-config-1.0-0.noarch                              3.0 k
+acme-jenkins-jobs                                noarch                              1.0-0                                    /acme-jenkins-jobs-1.0-0.noarch                                 749
+Installing for dependencies:
+jenkins                                          noarch                              1.408-1.1                                jenkins                                                         37 M
+
+Transaction Summary
+====================================================================================================================================================================================================
+Install       4 Package(s)
+Upgrade       0 Package(s)
+
+Total size: 37 M
+Total download size: 37 M
+Is this ok [y/N]: y
+Downloading Packages:
+jenkins-1.408-1.1.noarch.rpm                                                                                                                                                 |  37 MB     00:58
+Running rpm_check_debug
+Running Transaction Test
+Finished Transaction Test
+Transaction Test Succeeded
+Running Transaction
+Installing     : jenkins                                                                                                                                                                      1/4
+Installing     : acme-jenkins                                                                                                                                                                 2/4
+Installing     : acme-jenkins-config                                                                                                                                                          3/4
+Installing     : acme-jenkins-jobs                                                                                                                                                            4/4
+Shutting down Jenkins [FAILED]
+Starting Jenkins [  OK  ]
+waiting for jenkins to start
+waiting for jenkins to start
+
+Installed:
+acme-jenkins.noarch 0:1.0-0                                  acme-jenkins-config.noarch 0:1.0-0                                  acme-jenkins-jobs.noarch 0:1.0-0
+
+Dependency Installed:
+jenkins.noarch 0:1.408-1.1                                                                                                                                      
+
+Complete!</blockquote><span style="font-weight: bold;">Verify access to Jenkins via the role account</span></div><blockquote></blockquote><blockquote></blockquote></div>Connect to the splash page, verify anonymous read access without ability to run jobs, etc.
+
+<a onblur="try {parent.deselectBloggerImageGracefully();} catch(e) {}" href="http://4.bp.blogspot.com/-GAOk_tnc4s4/TbWh0Dsg0uI/AAAAAAAAABk/JDQxWqZsFmQ/s1600/jenkinsSplash.jpg"><img style="float: none; margin: 0pt 10px 10px 0pt; cursor: pointer; width: 508px; height: 246px;" src="http://4.bp.blogspot.com/-GAOk_tnc4s4/TbWh0Dsg0uI/AAAAAAAAABk/JDQxWqZsFmQ/s400/jenkinsSplash.jpg" alt="" id="BLOGGER_PHOTO_ID_5599559627422356194" border="0" /></a>
+
+Login to the splash page using acme/acmepass credentials:
+
+<a onblur="try {parent.deselectBloggerImageGracefully();} catch(e) {}" href="http://4.bp.blogspot.com/-LaCP-TWzUg4/TbWjEsVOYzI/AAAAAAAAABs/pCphB27a26A/s1600/jenkinsLogin.jpg"><img style="float: none; margin: 0pt 10px 10px 0pt; cursor: pointer; width: 505px; height: 246px;" src="http://4.bp.blogspot.com/-LaCP-TWzUg4/TbWjEsVOYzI/AAAAAAAAABs/pCphB27a26A/s400/jenkinsLogin.jpg" alt="" id="BLOGGER_PHOTO_ID_5599561012720067378" border="0" /></a>
+
+And verify jobs are now runnable:
+
+<a onblur="try {parent.deselectBloggerImageGracefully();} catch(e) {}" href="http://3.bp.blogspot.com/-m5VhzoDqysc/TbWkoYVaMrI/AAAAAAAAAB0/U-XI61cyREs/s1600/jenkinsLoggedIn.jpg"><img style="cursor: pointer; width: 501px; height: 246px;" src="http://3.bp.blogspot.com/-m5VhzoDqysc/TbWkoYVaMrI/AAAAAAAAAB0/U-XI61cyREs/s400/jenkinsLoggedIn.jpg" alt="" id="BLOGGER_PHOTO_ID_5599562725339050674" border="0" /></a>
+
+<span style="font-weight: bold;">Next Steps</span>
+
+Since Jenkins is now locked down with a role account, a subsequent post will describe how to integrate job runs with a JSON enabled `pick list' which will expose release jobs to be run only through Rundeck.  This integration will support a hands-off release process.
