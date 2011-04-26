@@ -1,0 +1,23 @@
+<project>
+   <actions/>
+   <description/>
+   <keepDependencies>false</keepDependencies>
+   <properties/>
+   <scm class='hudson.scm.NullSCM'/>
+   <canRoam>false</canRoam>
+   <disabled>false</disabled>
+   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+   <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+   <triggers class='vector'/>
+   <concurrentBuild>false</concurrentBuild>
+   <builders>
+      <hudson.tasks.Shell>
+         <command>echo helloworld2 job executes and sleeps for 30 seconds to mock job run</command>
+      </hudson.tasks.Shell>
+      <hudson.tasks.Shell>
+         <command>sleep 30</command>
+      </hudson.tasks.Shell>
+   </builders>
+   <publishers/>
+   <buildWrappers/>
+</project>
