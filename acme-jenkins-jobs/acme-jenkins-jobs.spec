@@ -37,7 +37,7 @@ do
    fi
 done
 /usr/bin/jenkins-jobs load --overwrite --file /etc/jenkins.jobs.d/helloworld.config.xml --name helloworld --username acme --password acmepass
-/usr/bin/jenkins-jobs load --overwrite --file /etc/jenkins.jobs.d/helloworld2.config.xml --name helloworld --username acme --password acmepass
+/usr/bin/jenkins-jobs load --overwrite --file /etc/jenkins.jobs.d/helloworld2.config.xml --name helloworld2 --username acme --password acmepass
 
 %changelog
 * Sun Mar 27 2011 Chuck Scott <chuck@acme.com> 1.0-0
