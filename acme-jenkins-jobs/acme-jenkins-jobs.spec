@@ -17,7 +17,7 @@ jenkins jobs package
 
 %post
 
-/etc/rc.d/init.d/jenkins restart
+/etc/rc.d/init.d/jenkins start
 sleep 10
 tries=0
 while [ 1 ]
