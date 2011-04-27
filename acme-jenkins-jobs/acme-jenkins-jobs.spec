@@ -14,7 +14,7 @@ jenkins jobs package
 %dir %attr(750, jenkins, jenkins) /etc/jenkins.jobs.d
 %attr(640, jenkins, jenkins) /etc/jenkins.jobs.d/helloworld.config.xml
 %attr(640, jenkins, jenkins) /etc/jenkins.jobs.d/helloworld2.config.xml
-%attr(640, jenkins, jenkins) /etc/jenkins.jobs.d/hellogit.config.xml
+%attr(640, jenkins, jenkins) /etc/jenkins.jobs.d/ci-jenkins.config.xml
 
 %post
 
@@ -23,7 +23,7 @@ sleep 10
 tries=0
 while [ 1 ]
 do
-   echo waiting for jenkins to start
+   echo waiting for jenkins webapi 
    sleep 5
    /usr/bin/jenkins-jobs list >/dev/null 2>&1
    if [ $? -eq 0 ]
@@ -37,12 +37,15 @@ do
       exit 1
    fi
 done
+echo loading helloworld
 /usr/bin/jenkins-jobs load --overwrite --file /etc/jenkins.jobs.d/helloworld.config.xml --name helloworld --username acme --password acmepass
+echo loading helloworld2
 /usr/bin/jenkins-jobs load --overwrite --file /etc/jenkins.jobs.d/helloworld2.config.xml --name helloworld2 --username acme --password acmepass
-/usr/bin/jenkins-jobs load --overwrite --file /etc/jenkins.jobs.d/hellogit.config.xml --name hellogit --username acme --password acmepass
+echo loading ci-jenkins
+/usr/bin/jenkins-jobs load --overwrite --file /etc/jenkins.jobs.d/ci-jenkins.config.xml --name ci-jenkins --username acme --password acmepass
 
 %changelog
 * Sun Mar 27 2011 Chuck Scott <chuck@acme.com> 1.0-0
     - initial version
 * Sun Mar 27 2011 Chuck Scott <chuck@acme.com> 1.0-1
-    - added hellogit job to test git plugin
+    - added ci-jenkins job to test git plugin
