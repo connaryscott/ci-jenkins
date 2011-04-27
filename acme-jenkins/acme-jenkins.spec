@@ -12,3 +12,5 @@ jenkins base platform with value added utilities
 
 %files
 %attr(755, root, root) /usr/bin/jenkins-jobs
+%dir %attr(755, jenkins, jenkins) /var/lib/jenkins/plugins
+%attr(644, jenkins, jenkins) /var/lib/jenkins/plugins/git.hpi
