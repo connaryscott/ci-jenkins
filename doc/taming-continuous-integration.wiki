@@ -1,84 +1,20 @@
 <span style="font-weight: bold;font-size:130%;" ><blockquote></blockquote><blockquote></blockquote><blockquote></blockquote><ul><li>Introduction</li></ul></span>
 I have always felt that Continuous Integration (CI) is an environment that should be treated like any other. It should be completely automated from provisioning the platform all the way to each CI job. At many client sites, I have seen such CI environments maintained in modes that are essentially ad-hoc. Users, authenticated or perhaps even anonymous, who create operational jobs via the UI and expect such jobs to behave consistently.  Except for the process of  familiarizing oneself with a product, I tend to avoid  web interfaces for repetition as they become cumbersome, error prone, and lead to inconsistent results.   Essentially, the web interface should be treated as a development tool so that we can create reference installations in order to bootstrap ourselves into automating that platform for the true operational environments.
 
-I have broken down steps to implementing a fully automated Jenkins solution. In addition to this blog, I will also describe, in a subsequent post, how to integrate Jenkins into a higher level release management workflow integrating Apache/Rundeck/JSON. This will document  further collaboration where the CI environment is deployed and maintained from a hands-off process where interaction with it is exposed to a higher level coordination tool, namely Rundeck.  In addition to the hands-off CI process, as this blog will document,  we will also see how we can expose CI for a hands-off Release Process.
+I have broken down steps to implementing a fully automated <a href="http://jenkins-ci.org/">Jenkins</a> solution. In addition to this blog, I will also describe, in a subsequent post, how to integrate Jenkins into a higher level release management workflow integrating Apache/<a href="http://rundeck.org/">Rundeck</a>/<a href="http://www.json.org/">JSON</a>. This will document  further collaboration where the CI environment is deployed and maintained from a hands-off process where interaction with it is exposed to a higher level coordination tool, namely Rundeck.  In addition to the hands-off CI process, as this blog will document,  we will also see how we can expose CI for a hands-off Release Process.
 
 <span style="font-weight: bold;"><span style="font-size:130%;">Assumptions</span>
 </span><ul><li><span>This exercise was conducted on a CentOS 5.5 64-bit O/S, however any recent RedHat or Centos platform should suffice.</span></li><li><span>yum and rpm sudo access as root</span></li><li><span>Ability to create a repo configuration file in /etc/yum.repos.d directory o
-</span></li><li><span>git installed</span></li><li><span>Internet access is needed in order to download jenkins and supporting centos packaging along with configurations accessible in <a href="http://pastebin.com/">g</a>ithub.</span></li><li><span>All packaging will reference a fictitious <span style="font-style: italic;">acme</span> corporation</span></li></ul><span style="font-weight: bold;"><span style="font-size:130%;">Preparation</span>
+</span></li><li><span>git installed</span></li><li><span>Internet access is needed in order to download jenkins and supporting centos packaging along with configurations accessible in <a href="http://pastebin.com/">g</a>ithub.</span></li><li><span>All packaging will reference a fictitious <span style="font-style: italic;">acme</span> corporation</span></li></ul><span style="font-weight: bold;"><span style="font-size:130%;">Preparation</span></span>
+<ul><li>Verify and/or install git  (<b>NOTE</b>: needed for RPM package builds only)</li></ul><blockquote></blockquote><blockquote><blockquote><span style="font-size:85%;">[chuck@centos-55-64-vm6 ci-jenkins]$ rpm -q git</span></blockquote><blockquote><span style="font-size:85%;">git-1.5.5.6-4.el5</span></blockquote></blockquote><ul><li>Verify and/or install rpm-build package (<b>NOTE</b>:  needed for RPM package builds only)</li></ul><blockquote><span style="font-size:85%;">[chuck@centos-55-64-vm6 ~]$ rpm -q rpm-build
 
-</span><ul><li><span>Install Apache webserver stack with mod_python 2.6 support (</span><b>NOTE</b><span>:  not needed for immediate exercise but will come in handy with respect to JSON support in subsequent post)</span></li></ul><span></span><span></span><span></span><blockquote><span>[chuck@</span> <span>centos-55-64-vm6 ~]$  sudo yum install python26-mod_python</span><span>
+rpm-build-4.4.2.3-18.el5</span></blockquote><ul><li><span>Create the Jenkins 3rd party yum repo configuration and import package key
+</span></li></ul><span style="font-size:85%;"><blockquote>[chuck@centos-55-64-vm6 dto]$ sudo curl -s -o /etc/yum.repos.d/jenkins.repo \
+http://pkg.jenkins-ci.org/redhat/jenkins.repo</blockquote><blockquote></blockquote><blockquote></blockquote><span><span></span></span></span><blockquote><span style="font-size:85%;"><span><span>[chuck@centos-55-64-vm6 dto]$ cat /etc/yum.repos.d/jenkins.repo</span></span></span><div><span style="font-size:85%;"><span><span>[jenkins]</span></span></span></div><div><span style="font-size:85%;"><span><span>name=Jenkins</span></span></span></div><div><span style="font-size:85%;"><span><span>baseurl=http://pkg.jenkins-ci.org/redhat/</span></span></span></div><div><span style="font-size:85%;"><span><span>gpgcheck=1
 
-Loaded plugins: fastestmirror
-Loading mirror speeds from cached hostfile
-* addons: mirror.nic.uoregon.edu
-* base: mirror.stanford.edu
-* epel: linux.mirrors.es.net
-* extras: mirror.stanford.edu
-* updates: mirror.stanford.edu
-Setting up Install Process
-Resolving Dependencies
---&gt; Running transaction check
----&gt; Package python26-mod_python.x86_64 0:3.3.1-13.el5 set to be updated
---&gt; Processing Dependency: libpython2.6.so.1.0()(64bit) for package: python26-mod_python
---&gt; Running transaction check
----&gt; Package python26-libs.x86_64 0:2.6.5-6.el5 set to be updated
---&gt; Processing Dependency: python26 = 2.6.5-6.el5 for package: python26-libs
---&gt; Running transaction check
----&gt; Package python26.x86_64 0:2.6.5-6.el5 set to be updated
---&gt; Processing Dependency: libffi.so.5()(64bit) for package: python26
---&gt; Running transaction check
----&gt; Package libffi.x86_64 0:3.0.5-1.el5 set to be updated
---&gt; Finished Dependency Resolution
-
-Dependencies Resolved
-
-====================================================================================================================================================================================================
-Package                                                 Arch                                       Version                                          Repository                                Size
-====================================================================================================================================================================================================
-Installing:
-python26-mod_python                                     x86_64                                     3.3.1-13.el5                                     epel                                     332 k
-Installing for dependencies:
-libffi                                                  x86_64                                     3.0.5-1.el5                                      epel                                      24 k
-python26                                                x86_64                                     2.6.5-6.el5                                      epel                                     6.5 M
-python26-libs                                           x86_64                                     2.6.5-6.el5                                      epel                                     692 k
-
-Transaction Summary
-====================================================================================================================================================================================================
-Install       4 Package(s)
-Upgrade       0 Package(s)
-
-Total download size: 7.5 M
-Is this ok [y/N]: y
-Downloading Packages:
-(1/4): libffi-3.0.5-1.el5.x86_64.rpm                                                                                                                                         |  24 kB     00:00  
-(2/4): python26-mod_python-3.3.1-13.el5.x86_64.rpm                                                                                                                           | 332 kB     00:00  
-(3/4): python26-libs-2.6.5-6.el5.x86_64.rpm                                                                                                                                  | 692 kB     00:00  
-(4/4): python26-2.6.5-6.el5.x86_64.rpm                                                                                                                                       | 6.5 MB     00:07  
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Total                                                                                                                                                               898 kB/s | 7.5 MB     00:08  
-Running rpm_check_debug
-Running Transaction Test
-Finished Transaction Test
-Transaction Test Succeeded
-Running Transaction
-Installing     : libffi                                                                                                                                                                       1/4
-Installing     : python26-libs                                                                                                                                                                2/4
-Installing     : python26-mod_python                                                                                                                                                          3/4
-Installing     : python26                                                                                                                                                                     4/4
-
-Installed:
-python26-mod_python.x86_64 0:3.3.1-13.el5                                                                                                                                                      
-
-Dependency Installed:
-libffi.x86_64 0:3.0.5-1.el5                                   python26.x86_64 0:2.6.5-6.el5                                   python26-libs.x86_64 0:2.6.5-6.el5                               
-
-Complete!
-</span></blockquote><ul><li>Verify and/or install git  (<b>NOTE</b>: needed for RPM package builds only)</li></ul><blockquote></blockquote><blockquote><blockquote>[chuck@centos-55-64-vm6 ci-jenkins]$ rpm -q git</blockquote><blockquote>git-1.5.5.6-4.el5</blockquote></blockquote><ul><li>Verify and/or install rpm-build package (<b>NOTE</b>:  needed for RPM package builds only)</li></ul><blockquote>[chuck@centos-55-64-vm6 ~]$ rpm -q rpm-build
-
-rpm-build-4.4.2.3-18.el5</blockquote><ul><li><span>Create the jenkins 3rd party yum repo configuration</span></li></ul><span><blockquote>[chuck@centos-55-64-vm6 dto]$ sudo curl -s -o /etc/yum.repos.d/jenkins.repo \
-http://pkg.jenkins-ci.org/redhat/jenkins.repo</blockquote><blockquote></blockquote><blockquote></blockquote><span><span></span></span></span><blockquote><span><span><span>[chuck@centos-55-64-vm6 dto]$ cat /etc/yum.repos.d/jenkins.repo</span></span></span><div><span><span><span>[jenkins]</span></span></span></div><div><span><span><span>name=Jenkins</span></span></span></div><div><span><span><span>baseurl=http://pkg.jenkins-ci.org/redhat/</span></span></span></div><div><span><span><span>gpgcheck=1</span></span></span></div></blockquote><div><ul><li><span>Import the Jenkins Package Key</span> </li></ul><span></span><span></span><blockquote><span>[chuck@centos-55-64-vm6 dto]$ sudo rpm --import \</span>
-<span>http://pkg.jenkins-ci.org/redhat/jenkins-ci.org.key</span></blockquote><blockquote><span></span></blockquote><span style="font-weight: bold;"><span style="font-size:130%;"><div  style="font-weight: bold;font-family:arial;"><ul><li style="font-weight: normal;"><span style="font-size:85%;">Create a workspace directory (<span style="font-weight: bold;">NOTE</span>:  this location is arbitrary)</span> </li></ul><span class="Apple-style-span" style="font-weight: normal;font-size:85%;" ></span></div><blockquote  style="font-weight: bold;font-family:arial;"><div><span class="Apple-style-span" style="font-weight: normal;font-size:85%;" >[chuck@centos-55-64-vm6 ]$ mkdir -p $HOME/workspace/dto</span></div><div><span class="Apple-style-span" style="font-weight: normal;font-size:85%;" ></span><span class="Apple-style-span" style="font-weight: normal;font-size:85%;" >[chuck@centos-55-64-vm6 ]$ cd $HOME/workspace/dto</span></div></blockquote><div  style="font-family:arial;"><ul><li><span style="font-weight: normal;font-size:85%;" >Checkout the package source</span></li></ul><span class="Apple-style-span" style="font-weight: normal;font-size:85%;" ><blockquote></blockquote></span></div><blockquote  style="font-family:arial;"><div><span class="Apple-style-span" style="font-weight: normal;font-size:85%;" ><span class="Apple-style-span">[chuck@centos-55-64-vm6 dto]$ git clone git://github.com/connaryscott/ci-jenkins.git</span></span></div><div><span class="Apple-style-span" style="font-weight: normal;font-size:85%;" ><div><span class="Apple-style-span"><span class="Apple-style-span">
+</span></span></span><span style="font-size:85%;">[chuck@centos-55-64-vm6 dto]$ sudo rpm --import \
+</span><span style="font-size:85%;">http://pkg.jenkins-ci.org/redhat/jenkins-ci.org.key</span><span><span><span>
+</span></span></span><span></span><span></span></div></blockquote><div><ul><li><span>Create the Rundeck 3rd party yum repo configuration</span></li></ul><blockquote><code>sudo rpm -Uvh http://rundeck.org/latest.rpm</code></blockquote><blockquote><span></span></blockquote><span style="font-weight: bold;"><span style="font-size:130%;"><div  style="font-weight: bold;font-family:arial;"><ul><li style="font-weight: normal;"><span style="font-size:100%;">Create a workspace directory (<span style="font-weight: bold;">NOTE</span>:  this location is arbitrary)</span> </li></ul><span class="Apple-style-span" style="font-weight: normal;font-size:85%;" ></span></div><blockquote  style="font-weight: bold;font-family:arial;"><div><span class="Apple-style-span" style="font-weight: normal;font-size:85%;" >[chuck@centos-55-64-vm6 ]$ mkdir -p $HOME/workspace/dto</span></div><div><span class="Apple-style-span" style="font-weight: normal;font-size:85%;" ></span><span class="Apple-style-span" style="font-weight: normal;font-size:85%;" >[chuck@centos-55-64-vm6 ]$ cd $HOME/workspace/dto</span></div></blockquote><div  style="font-family:arial;"><ul><li><span style="font-weight: normal;font-size:100%;" >Checkout the package source</span></li></ul><span class="Apple-style-span" style="font-weight: normal;font-size:85%;" ><blockquote></blockquote></span></div><blockquote  style="font-family:arial;"><div><span class="Apple-style-span" style="font-weight: normal;font-size:85%;" ><span class="Apple-style-span">[chuck@centos-55-64-vm6 dto]$ git clone git://github.com/connaryscott/ci-jenkins.git</span></span></div><div><span class="Apple-style-span" style="font-weight: normal;font-size:85%;" ><div><span class="Apple-style-span"><span class="Apple-style-span">
 </span></span></div><div><span class="Apple-style-span"><span class="Apple-style-span">Initialized empty Git repository in /home/chuck/workpace/dto/ci-jenkins/.git/</span></span></div><div><span class="Apple-style-span"><span class="Apple-style-span">remote: Counting objects: 36, done.</span></span></div><div><span class="Apple-style-span"><span class="Apple-style-span">remote: Compressing objects: 100% (22/22), done.</span></span></div><div><span class="Apple-style-span"><span class="Apple-style-span">remote: Total 36 (delta 3), reremote: used 0 (delta 0)</span></span></div><div><span class="Apple-style-span"><span class="Apple-style-span">Receiving objects: 100% (36/36), 5.41 KiB, done.</span></span></div><div><span class="Apple-style-span"><span class="Apple-style-span">Resolving deltas: 100% (3/3), done.
 
 </span></span></div><div><span class="Apple-style-span"><span class="Apple-style-span">chuck@centos-55-64-vm6 dto]$ cd ci-jenkins
@@ -227,13 +163,13 @@ sleep 5
 /usr/bin/jenkins-jobs list &gt;/dev/null 2&gt;&amp;1
 if [ $? -eq 0 ]
 then
-   break
+break
 fi
 let tries=tries+1
 if [ $tries -eq 30 ]
 then
-   echo "jenkins startup failed" 1&gt;&amp;2
-   exit 1
+echo "jenkins startup failed" 1&gt;&amp;2
+exit 1
 fi
 done
 /usr/bin/jenkins-jobs load --overwrite --file /etc/jenkins.jobs.d/helloworld.config.xml --name helloworld --username acme --password acmepass
@@ -272,12 +208,12 @@ rm -rf dist
 &lt;triggers class='vector'/&gt;
 &lt;concurrentBuild&gt;false&lt;/concurrentBuild&gt;
 &lt;builders&gt;
-   &lt;hudson.tasks.Shell&gt;
-      &lt;command&gt;echo helloworld job executes and sleeps for 30 seconds to mock job run&lt;/command&gt;
-   &lt;/hudson.tasks.Shell&gt;
-   &lt;hudson.tasks.Shell&gt;
-      &lt;command&gt;sleep 30&lt;/command&gt;
-   &lt;/hudson.tasks.Shell&gt;
+&lt;hudson.tasks.Shell&gt;
+&lt;command&gt;echo helloworld job executes and sleeps for 30 seconds to mock job run&lt;/command&gt;
+&lt;/hudson.tasks.Shell&gt;
+&lt;hudson.tasks.Shell&gt;
+&lt;command&gt;sleep 30&lt;/command&gt;
+&lt;/hudson.tasks.Shell&gt;
 &lt;/builders&gt;
 &lt;publishers/&gt;
 &lt;buildWrappers/&gt;
@@ -304,15 +240,15 @@ Wrote: /home/chuck/workpace/dto/ci-jenkins/acme-jenkins-jobs/dist/RPMS/noarch/ac
 </blockquote><span style="font-size:100%;"><span style="font-weight: bold;">
 Reviewing produced packages</span></span>
 
-<blockquote>[chuck@centos-55-64-vm6 acme-jenkins-jobs]$ cd ..
-[chuck@centos-55-64-vm6 ci-jenkins]$ find . -name \*.rpm -print
+<blockquote><span style="font-size:85%;">[chuck@centos-55-64-vm6 acme-jenkins-jobs]$ cd ..
+[chuck@centos-55-64-vm6 ci-jenkins]$ find </span><span style="font-size:85%;">acme-jenkins-* -name \*.rpm -print
 
 ./acme-jenkins/dist/RPMS/noarch/acme-jenkins-1.0-0.noarch.rpm
 ./acme-jenkins-jobs/dist/RPMS/noarch/acme-jenkins-jobs-1.0-0.noarch.rpm
-./acme-jenkins-config/dist/RPMS/noarch/acme-jenkins-config-1.0-0.noarch.rpm</blockquote><span style="font-weight: bold;">Testing RPM installations with yum localinstall</span>
+./acme-jenkins-config/dist/RPMS/noarch/acme-jenkins-config-1.0-0.noarch.rpm</span></blockquote><span style="font-weight: bold;">Testing RPM installations with yum localinstall</span>
 
-<blockquote>[chuck@centos-55-64-vm6 ci-jenkins]$ sudo yum localinstall \
---nogpgcheck $(find . -name \*.rpm -print)
+<blockquote><span style="font-size:85%;">[chuck@centos-55-64-vm6 ci-jenkins]$ sudo yum localinstall \
+--nogpgcheck $(find </span><span style="font-size:85%;">acme-jenkins-* </span><span style="font-size:85%;">-name \*.rpm -print)
 
 Loaded plugins: fastestmirror
 Setting up Local Package Process
@@ -378,9 +314,9 @@ Installed:
 acme-jenkins.noarch 0:1.0-0                                  acme-jenkins-config.noarch 0:1.0-0                                  acme-jenkins-jobs.noarch 0:1.0-0
 
 Dependency Installed:
-jenkins.noarch 0:1.408-1.1                                                                                                                                      
+jenkins.noarch 0:1.408-1.1                                                                                                                               
 
-Complete!</blockquote><span style="font-weight: bold;">Verify access to Jenkins via the role account</span></div><blockquote></blockquote><blockquote></blockquote></div>Connect to the splash page, verify anonymous read access without ability to run jobs, etc.
+Complete!</span></blockquote><span style="font-weight: bold;">Verify access to Jenkins via the role account</span></div><blockquote></blockquote><blockquote></blockquote></div>Connect to the splash page, verify anonymous read access without ability to run jobs, etc.
 
 <a onblur="try {parent.deselectBloggerImageGracefully();} catch(e) {}" href="http://4.bp.blogspot.com/-GAOk_tnc4s4/TbWh0Dsg0uI/AAAAAAAAABk/JDQxWqZsFmQ/s1600/jenkinsSplash.jpg"><img style="float: none; margin: 0pt 10px 10px 0pt; cursor: pointer; width: 508px; height: 246px;" src="http://4.bp.blogspot.com/-GAOk_tnc4s4/TbWh0Dsg0uI/AAAAAAAAABk/JDQxWqZsFmQ/s400/jenkinsSplash.jpg" alt="" id="BLOGGER_PHOTO_ID_5599559627422356194" border="0" /></a>
 
