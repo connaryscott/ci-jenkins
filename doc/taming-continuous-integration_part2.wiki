@@ -1,0 +1,199 @@
+<font style="font-weight: bold;">
+NOTE</font>:  This is a continuation of previous blog, <a href="http://cs128rty.blogspot.com/2011/04/taming-continuous-integration_22.html">Taming Continuous Integration</a> and assumes a locked down <a href="http://jenkins-ci.org/">Jenkins</a> server is in place.
+
+Given a locked down Jenkins server, we are interested in exposing CI jobs to the <a href="http://rundeck.org/">Rundeck</a> platform for a hands-off Release Process.  As mentioned in the previous blog,   Apache/<a href="http://rundeck.org/">Rundeck</a>/<a href="http://www.json.org/">JSON</a> integration will support a CI job `pick list' which will expose these jobs for release process execution.  In order to support JSON, python26 was chosen  since earlier python versions do not support the json library by default.  A new package, supporting both Rundeck and Apache is built to bootstrap the <a href="http://www.modpython.org/live/current/doc-html/hand-pub-intro.html">python publishing mechanism</a>.  This publisher provides a single point of entry for Python script processing which we organize by the type of service it provides.
+
+
+<font size="4"><font style="font-weight: bold;">Create RPM Package Sources</font></font>
+
+New packages supporting Rundeck and JSON/Apache are created.
+
+<font style="font-weight: bold;">NOTE</font>:  The RPM package creation scheme is virtually identical to what we saw in <a href="http://cs128rty.blogspot.com/2011/04/taming-continuous-integration_22.html">Part 1</a> and will not be shown in detail here and instead will focus on unique concepts brought into this    integration phase.
+
+<font style="font-weight: bold;">acme-rundeck-config package</font>
+
+This package addresses local configuration applied to rundeck which may feature ldap/active directory authentication, etc.   Currently this package is trivial in nature and only includes an RPM `requires' statement for the rundeck package itself.
+<ul><li>Build the acme-rundeck-config package:</li></ul><blockquote><font size="2">[chuck@centos-55-64-vm6 ci-jenkins]$ cd acme-rundeck-config/
+[chuck@centos-55-64-vm6 acme-rundeck-config]$ make
+rm -rf build-target
+rm -rf dist
+mkdir -p dist/RPMS/noarch
+rm -rf build-target
+cp -r buildroot build-target
+rpmbuild -bb --target=noarch --define "_topdir /home/chuck/workpace/git/ci-jenkins/acme-rundeck-config/dist" --buildroot="/home/chuck/workpace/git/ci-jenkins/acme-rundeck-config/build-target" acme-rundeck-config.spec
+Building target platforms: noarch
+Building for target noarch
+Processing files: acme-rundeck-config-1.0-0
+Checking for unpackaged file(s): /usr/lib/rpm/check-files /home/chuck/workpace/git/ci-jenkins/acme-rundeck-config/build-target
+Wrote: /home/chuck/workpace/git/ci-jenkins/acme-rundeck-config/dist/RPMS/noarch/acme-rundeck-config-1.0-0.noarch.rpm</font></blockquote>
+
+<font style="font-weight: bold;">acme-rundeck-options package</font>
+
+This package installs  apache configuration supporting python enabled and generic CGI options services.   In addition to mod_python/CGI support, the python publishing mechanism is also available which will be described within this section.  in this blog and instead will focus on apache configuration and a jenkins JSON service.
+
+Since this package is built on mod_python for version 2.6, there exists an RPM `requires' statement for the python26-mod_python package.
+
+<ul><li>Build the acme-rundeck-options package:</li></ul><blockquote><font size="2">[chuck@centos-55-64-vm6 acme-rundeck-config]$ cd ../acme-rundeck-options
+[chuck@centos-55-64-vm6 acme-rundeck-options]$ make
+
+rm -rf build-target
+rm -rf dist
+mkdir -p dist/RPMS/noarch
+rm -rf build-target
+cp -r buildroot build-target
+rpmbuild -bb --target=noarch --define "_topdir /home/chuck/workpace/dto/ci-jenkins/acme-rundeck-options/dist" --buildroot="/home/chuck/workpace/dto/ci-jenkins/acme-rundeck-options/build-target" acme-rundeck-options.spec
+Building target platforms: noarch
+Building for target noarch
+Processing files: acme-rundeck-options-1.0-0
+Requires(rpmlib): rpmlib(CompressedFileNames) &lt;= 3.0.4-1 rpmlib(PayloadFilesHavePrefix) &lt;= 4.0-1
+Requires: python26-mod_python
+Checking for unpackaged file(s): /usr/lib/rpm/check-files /home/chuck/workpace/dto/ci-jenkins/acme-rundeck-options/build-target
+Wrote: /home/chuck/workpace/dto/ci-jenkins/acme-rundeck-options/dist/RPMS/noarch/acme-rundeck-options-1.0-0.noarch.rpm</font></blockquote><font style="font-weight: bold;">acme-rundeck-jobs package</font>
+
+Similar to the acme-jenkins-jobs package we saw in Part 1, we make use of rundeck's command line utility to ensure rundeck is running and able to accept job uploads over its web api.  Additionally the jobs package also creates an <font style="font-style: italic;">acme</font> rundeck project.
+
+<ul><li>Build the acme-rundeck-jobs package:</li></ul><blockquote><font size="2">[chuck@centos-55-64-vm6 acme-rundeck-config]$ cd ../acme-rundeck-jobs
+[chuck@centos-55-64-vm6 acme-rundeck-jobs]$ make
+rm -rf build-target
+rm -rf dist
+mkdir -p dist/RPMS/noarch
+rm -rf build-target
+cp -r buildroot build-target
+rpmbuild -bb --target=noarch --define "_topdir /home/chuck/workpace/git/ci-jenkins/acme-rundeck-jobs/dist" --buildroot="/home/chuck/workpace/git/ci-jenkins/acme-rundeck-jobs/build-target" acme-rundeck-jobs.spec
+Building target platforms: noarch
+Building for target noarch
+Processing files: acme-rundeck-jobs-1.0-0
+Requires(interp): /bin/sh
+Requires(rpmlib): rpmlib(CompressedFileNames) &lt;= 3.0.4-1 rpmlib(PayloadFilesHavePrefix) &lt;= 4.0-1
+Requires(post): /bin/sh
+Requires: acme-rundeck-config acme-rundeck-options
+Checking for unpackaged file(s): /usr/lib/rpm/check-files /home/chuck/workpace/git/ci-jenkins/acme-rundeck-jobs/build-target
+Wrote: /home/chuck/workpace/git/ci-jenkins/acme-rundeck-jobs/dist/RPMS/noarch/acme-rundeck-jobs-1.0-0.noarch.rpm
+</font></blockquote><font style="font-weight: bold;">Testing RPM installations with yum localinstall</font>
+
+<blockquote><font size="2">[chuck@centos-55-64-vm6 acme-rundeck-jobs]$ cd ..</font>
+<font size="2">[chuck@centos-55-64-vm6 ci-jenkins]$ sudo yum localinstall --nogpgcheck \
+$(find acme-rundeck-* -name \*.rpm -print)
+
+Loaded plugins: fastestmirror
+Setting up Local Package Process
+Examining acme-rundeck-config/dist/RPMS/noarch/acme-rundeck-config-1.0-0.noarch.rpm: acme-rundeck-config-1.0-0.noarch
+Marking acme-rundeck-config/dist/RPMS/noarch/acme-rundeck-config-1.0-0.noarch.rpm to be installed
+Loading mirror speeds from cached hostfile
+* addons: mirrors.easynews.com
+* base: mirror.san.fastserv.com
+* epel: linux.mirrors.es.net
+* extras: mirror.nic.uoregon.edu
+* updates: centos.mirror.facebook.net
+Examining acme-rundeck-jobs/dist/RPMS/noarch/acme-rundeck-jobs-1.0-0.noarch.rpm: acme-rundeck-jobs-1.0-0.noarch
+Marking acme-rundeck-jobs/dist/RPMS/noarch/acme-rundeck-jobs-1.0-0.noarch.rpm to be installed
+Examining acme-rundeck-options/dist/RPMS/noarch/acme-rundeck-options-1.0-0.noarch.rpm: acme-rundeck-options-1.0-0.noarch
+Marking acme-rundeck-options/dist/RPMS/noarch/acme-rundeck-options-1.0-0.noarch.rpm to be installed
+Resolving Dependencies
+--&gt; Running transaction check
+---&gt; Package acme-rundeck-config.noarch 0:1.0-0 set to be updated
+--&gt; Processing Dependency: rundeck for package: acme-rundeck-config
+---&gt; Package acme-rundeck-jobs.noarch 0:1.0-0 set to be updated
+---&gt; Package acme-rundeck-options.noarch 0:1.0-0 set to be updated
+--&gt; Running transaction check
+---&gt; Package rundeck.noarch 0:1.2.0-0.43 set to be updated
+--&gt; Processing Dependency: rundeck-config for package: rundeck
+--&gt; Running transaction check
+---&gt; Package rundeck-config.noarch 0:1.2.0-0.43 set to be updated
+--&gt; Finished Dependency Resolution
+
+Dependencies Resolved
+
+====================================================================================================================================================================================================
+Package                                          Arch                               Version                                   Repository                                                      Size
+====================================================================================================================================================================================================
+Installing:
+acme-rundeck-config                              noarch                             1.0-0                                     /acme-rundeck-config-1.0-0.noarch                               0.0
+acme-rundeck-jobs                                noarch                             1.0-0                                     /acme-rundeck-jobs-1.0-0.noarch                                1.6 k
+acme-rundeck-options                             noarch                             1.0-0                                     /acme-rundeck-options-1.0-0.noarch                              545
+Installing for dependencies:
+rundeck                                          noarch                             1.2.0-0.43                                rundeck-release                                                 44 M
+rundeck-config                                   noarch                             1.2.0-0.43                                rundeck-release                                                7.4 k
+
+Transaction Summary
+====================================================================================================================================================================================================
+Install       5 Package(s)
+Upgrade       0 Package(s)
+
+Total size: 44 M
+Total download size: 44 M
+Is this ok [y/N]:y
+Downloading Packages:
+(1/2): rundeck-config-1.2.0-0.43.noarch.rpm                                                                                                                                  | 7.4 kB     00:00
+(2/2): rundeck-1.2.0-0.43.noarch.rpm                                                                                                                                         |  44 MB     02:12
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Total                                                                                                                                                               343 kB/s |  44 MB     02:12
+Running rpm_check_debug
+Running Transaction Test
+Finished Transaction Test
+Transaction Test Succeeded
+Running Transaction
+Installing     : acme-rundeck-options                                                                                                                                                         1/5
+warning: user rundeck does not exist - using root
+warning: group rundeck does not exist - using root
+Installing     : rundeck                                                                                                                                                                      2/5
+Installing     : acme-rundeck-config                                                                                                                                                          3/5
+Installing     : rundeck-config                                                                                                                                                               4/5
+Installing     : acme-rundeck-jobs                                                                                                                                                            5/5
+Starting rundeckd: [  OK  ]
+waiting for rundeck to start</font>
+<font size="2">waiting for rundeck to start
+waiting for rundeck to start
+waiting for rundeck to start
+Total Jobs Uploaded: 1 jobs
+Succeeded creating/updating 1  Jobs:
+- acme-release [1] <http: 4440="" job="" show="" 1="">
+Installed:
+acme-rundeck-config.noarch 0:1.0-0
+acme-rundeck-jobs.noarch 0:1.0-0
+acme-rundeck-options.noarch 0:1.0-0          
+Dependency Installed:
+rundeck.noarch 0:1.2.0-0.43
+rundeck-config.noarch 0:1.2.0-0.43                                              
+Complete!</http:></font>
+</blockquote>
+<blockquote></blockquote><font style="font-weight: bold;">Test acme-rundeck-options service</font>
+
+Use curl to ensure the jenkins jobs options service is returning JSON output.  In addition to the url, query string parameters are needed to identify the server and authenticate to it:
+
+<blockquote>[chuck@centos-55-64-vm6 ci-jenkins]$ curl 'http://localhost/options/common/jenkins/jobs?username=acme&amp;password=acmepass&amp;ciHost=localhost:8080'
+[
+{name:"helloworld",value:"helloworld"},
+][chuck@centos-55-64-vm6 ci-jenkins]$
+</blockquote>At this point we are ready to expose the jenkins options service to a rundeck job which will actually run it.
+
+<font style="font-weight: bold;">Run the acme-jenkins-release Rundeck job
+
+</font><font>Go to the splash page of rundeck, example  http://centos-55-64-vm6.local:4440/</font><font style="font-weight: bold;">, </font><font>and use the default credentials (admin/admin) to login
+
+<a onblur="try {parent.deselectBloggerImageGracefully();} catch(e) {}" href="http://3.bp.blogspot.com/-sLKvTc0j_ZM/Tbc6PGhBNzI/AAAAAAAAACg/HdPcmKZfdsc/s1600/rundeckSplashLogin.jpg"><img style="cursor: pointer; width: 527px; height: 305px;" src="http://3.bp.blogspot.com/-sLKvTc0j_ZM/Tbc6PGhBNzI/AAAAAAAAACg/HdPcmKZfdsc/s400/rundeckSplashLogin.jpg" alt="" id="BLOGGER_PHOTO_ID_5600008692780054322" border="0"></a>
+
+which will take you to the Run tab and the <font style="font-style: italic;">acme </font>project should show at the top
+
+<a onblur="try {parent.deselectBloggerImageGracefully();} catch(e) {}" href="http://3.bp.blogspot.com/-1fcewsi4OWk/Tbc8uhdLJII/AAAAAAAAAC4/e14o7FSgkCs/s1600/rundeckRunTab.jpg"><img style="cursor: pointer; width: 400px; height: 305px;" src="http://3.bp.blogspot.com/-1fcewsi4OWk/Tbc8uhdLJII/AAAAAAAAAC4/e14o7FSgkCs/s400/rundeckRunTab.jpg" alt="" id="BLOGGER_PHOTO_ID_5600011431610885250" border="0"></a>
+
+
+Next go to the jobs tab and open the ci group dropdown where the acme-release jobs are shown and select then run:
+
+<a onblur="try {parent.deselectBloggerImageGracefully();} catch(e) {}" href="http://1.bp.blogspot.com/-7gCuxtHyLOE/Tbc7FaUS7sI/AAAAAAAAACw/Tc0mqZ57sQs/s1600/rundeckCIJob.jpg"><img style="cursor: pointer; width: 650px; height: 350px;" src="http://1.bp.blogspot.com/-7gCuxtHyLOE/Tbc7FaUS7sI/AAAAAAAAACw/Tc0mqZ57sQs/s400/rundeckCIJob.jpg" alt="" id="BLOGGER_PHOTO_ID_5600009625808334530" border="0"></a>
+
+<a onblur="try {parent.deselectBloggerImageGracefully();} catch(e) {}" href="http://2.bp.blogspot.com/-5nqnqqQlxbI/TbdBLZgrzqI/AAAAAAAAADA/_DoLSCL5ZDU/s1600/rundeckCIJobSelect.jpg"><img style="cursor: pointer; width: 550px; height: 305px;" src="http://2.bp.blogspot.com/-5nqnqqQlxbI/TbdBLZgrzqI/AAAAAAAAADA/_DoLSCL5ZDU/s400/rundeckCIJobSelect.jpg" alt="" id="BLOGGER_PHOTO_ID_5600016325740842658" border="0"></a>
+
+Go back to the jenkins server and verify that the job ran successfully:
+
+
+<a onblur="try {parent.deselectBloggerImageGracefully();} catch(e) {}" href="http://3.bp.blogspot.com/-6VZA1k81R9s/TbdBkAJR_JI/AAAAAAAAADI/6TIRVXvv3Kw/s1600/jenkinsJobRunSuccess.jpg"><img style="cursor: pointer; width: 533px; height: 305px;" src="http://3.bp.blogspot.com/-6VZA1k81R9s/TbdBkAJR_JI/AAAAAAAAADI/6TIRVXvv3Kw/s400/jenkinsJobRunSuccess.jpg" alt="" id="BLOGGER_PHOTO_ID_5600016748428524690" border="0"></a>
+
+
+</font><font style="font-weight: bold;">
+
+
+
+</font>
+
+<blockquote></blockquote>
