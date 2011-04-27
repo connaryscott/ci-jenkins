@@ -1,6 +1,6 @@
 name: acme-jenkins-jobs
 version: 1.0
-release: 0
+release: 1
 summary: acme-jenkins platform package
 group: acme/releaseMgmt
 license: acme inc.
@@ -14,6 +14,7 @@ jenkins jobs package
 %dir %attr(750, jenkins, jenkins) /etc/jenkins.jobs.d
 %attr(640, jenkins, jenkins) /etc/jenkins.jobs.d/helloworld.config.xml
 %attr(640, jenkins, jenkins) /etc/jenkins.jobs.d/helloworld2.config.xml
+%attr(640, jenkins, jenkins) /etc/jenkins.jobs.d/hellogit.config.xml
 
 %post
 
@@ -38,7 +39,10 @@ do
 done
 /usr/bin/jenkins-jobs load --overwrite --file /etc/jenkins.jobs.d/helloworld.config.xml --name helloworld --username acme --password acmepass
 /usr/bin/jenkins-jobs load --overwrite --file /etc/jenkins.jobs.d/helloworld2.config.xml --name helloworld2 --username acme --password acmepass
+/usr/bin/jenkins-jobs load --overwrite --file /etc/jenkins.jobs.d/hellogit.config.xml --name hellogit --username acme --password acmepass
 
 %changelog
 * Sun Mar 27 2011 Chuck Scott <chuck@acme.com> 1.0-0
     - initial version
+* Sun Mar 27 2011 Chuck Scott <chuck@acme.com> 1.0-1
+    - added hellogit job to test git plugin
