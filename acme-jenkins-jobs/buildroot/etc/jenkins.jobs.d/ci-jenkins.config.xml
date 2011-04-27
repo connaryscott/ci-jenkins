@@ -54,6 +54,9 @@
   <concurrentBuild>false</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
+      <command>make all</command>
+    </hudson.tasks.Shell>
+    <hudson.tasks.Shell>
       <command>echo helloworld job executes and sleeps for 30 seconds to mock job run</command>
     </hudson.tasks.Shell>
     <hudson.tasks.Shell>
