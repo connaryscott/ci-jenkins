@@ -14,8 +14,6 @@ processes jobxml and dependent options service files
 
 
 %files
-%attr(755, rundeck, rundeck) /var/rundeck/options/jenkins.py
-
 %dir %attr(755, rundeck, rundeck) /var/rundeck/projects/acme
 %dir %attr(755, rundeck, rundeck) /var/rundeck/projects/acme/jobs.d
 %attr(644, rundeck, rundeck) /var/rundeck/projects/acme/jobs.d/acme-release.xml
