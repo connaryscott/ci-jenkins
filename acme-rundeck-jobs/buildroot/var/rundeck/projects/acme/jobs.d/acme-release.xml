@@ -4,7 +4,7 @@
     <sequence keepgoing='false' strategy='node-first'>
       <command>
         <scriptargs />
-        <script><![CDATA[curl  -s -k -f "http://acme:acmepass@centos-55-64-vm6.local:8080/job/${RD_OPTION_JOBNAME}/build"]]></script>
+        <script><![CDATA[curl  -s -k -f "http://acme:acmepass@localhost:8080/job/${RD_OPTION_JOBNAME}/build"]]></script>
       </command>
     </sequence>
     <description>run a ci build using drop down list of available jobs</description>
@@ -12,7 +12,7 @@
     <context>
       <project>acme</project>
       <options>
-        <option required='true' name='jobname' enforcedvalues='true' valuesUrl='http://localhost/options/common/jenkins/jobs?username=acme&amp;password=acmepass&amp;ciHost=centos-55-64-vm6.local:8080'>
+        <option required='true' name='jobname' enforcedvalues='true' valuesUrl='http://localhost/options/common/jenkins/jobs?username=acme&amp;password=acmepass&amp;ciHost=localhost:8080'>
           <description>name of ci job to run</description>
         </option>
       </options>
