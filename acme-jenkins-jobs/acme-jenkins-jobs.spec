@@ -1,6 +1,6 @@
 name: acme-jenkins-jobs
 version: 1.0
-release: 1
+release: 2
 summary: acme-jenkins platform package
 group: acme/releaseMgmt
 license: acme inc.
@@ -18,13 +18,15 @@ jenkins jobs package
 
 %post
 
-/etc/rc.d/init.d/jenkins start
-sleep 10
+if ! /etc/rc.d/init.d/jenkins status >/dev/null 2>&1
+then
+   /etc/rc.d/init.d/jenkins start
+   sleep 10
+fi
 tries=0
 while [ 1 ]
 do
    echo waiting for jenkins webapi 
-   sleep 5
    /usr/bin/jenkins-jobs list >/dev/null 2>&1
    if [ $? -eq 0 ]
    then
@@ -36,6 +38,7 @@ do
       echo "jenkins startup failed" 1>&2
       exit 1
    fi
+   sleep 5
 done
 echo loading helloworld
 /usr/bin/jenkins-jobs load --overwrite --file /etc/jenkins.jobs.d/helloworld.config.xml --name helloworld --username acme --password acmepass
